@@ -5,9 +5,6 @@ section .data
     zero db '0', 0
     blanc db ' ', 0
     none db '9', 0
-
-
-
     grid db 1, 1 ,0, 0, 0
             db 0, 0, 0, 1, 0
             db 0, 1, 0, 0, 0
@@ -17,21 +14,11 @@ section .data
 section .text
     global _start
 
-
 _start:
     call printer
-
     call deadspace
-
-
-
-
     call check_neighbours
-
-
-
     call ejected
-
 
 printer:
     xor esi, esi
@@ -39,7 +26,6 @@ printer:
 print_row:
     cmp esi, 5
     jge printed
-
     xor edi, edi
 
 print_col:
@@ -70,9 +56,7 @@ print_col:
     mov edx, 1
     int 0x80
 
-
     jmp advance_col
-
 
 print_zero:
     mov eax, 4      
@@ -88,11 +72,9 @@ print_zero:
     mov edx, 1
     int 0x80
 
-
 advance_col:
     inc edi
     jmp print_col
-
 
 next_row:
     mov eax, 4      
@@ -107,11 +89,6 @@ next_row:
 printed:
     ret
 
-
-
-
-
-
 ; OTRA COSA
 check_neighbours:
     xor esi, esi
@@ -123,8 +100,6 @@ check_neighbours:
     mov edi, 0  ; Y de el array[][]
 
     call delimiter
-
-
 
 right_neighbour:
     ; calcula el indice ne el arr[][]
@@ -151,7 +126,6 @@ right_neighbour:
     ; si es 1
     je right_one
 
-
 left_neighbour:
     ;BUSCAR A LA IZQUIERDA
     ; arr[x - 1][y]
@@ -167,7 +141,6 @@ left_neighbour:
     cmp eax, 24
     jg upper_neighbour
 
-
     ; buscar 1 
     mov al, [grid + eax]
     cmp al, 1
@@ -175,7 +148,6 @@ left_neighbour:
     jne left_zero
     ; si es 1
     je left_one
-
 
 upper_neighbour:
     ;BUSCAR ARRIBA
@@ -192,7 +164,6 @@ upper_neighbour:
     cmp eax, 24
     jg down_neighbour
 
-
     ; buscar 1 
     mov al, [grid + eax]
     cmp al, 1
@@ -200,7 +171,6 @@ upper_neighbour:
     jne up_zero
     ; si es 1
     je up_one
-
 
 down_neighbour:
     ;BUSCAR ABAJO
@@ -217,7 +187,6 @@ down_neighbour:
     cmp eax, 24
     jg up_right_neighbour
 
-
     ; buscar 1 
     mov al, [grid + eax]
     cmp al, 1
@@ -225,7 +194,6 @@ down_neighbour:
     jne down_zero
     ; si es 1
     je down_one
-
 
 up_right_neighbour:
     ;BUSCAR ARRIBA DERECHA
@@ -242,7 +210,6 @@ up_right_neighbour:
     cmp eax, 24
     jg up_left_neighbour
 
-
     ; buscar 1 
     mov al, [grid + eax]
     cmp al, 1
@@ -250,8 +217,6 @@ up_right_neighbour:
     jne up_right_zero
     ; si es 1
     je up_right_one
-
-
 
 up_left_neighbour:
     ;BUSCAR ARRIBA IZQUIERDA
@@ -268,7 +233,6 @@ up_left_neighbour:
     cmp eax, 24
     jg down_right_neighbour
 
-
     ; buscar 1 
     mov al, [grid + eax]
     cmp al, 1
@@ -276,7 +240,6 @@ up_left_neighbour:
     jne up_left_zero
     ; si es 1
     je up_left_one
-
 
 down_right_neighbour:
     ;BUSCAR ABAJO DERECHA
@@ -293,7 +256,6 @@ down_right_neighbour:
     cmp eax, 24
     jg outlander
 
-
     ; buscar 1 
     mov al, [grid + eax]
     cmp al, 1
@@ -301,7 +263,6 @@ down_right_neighbour:
     jne down_left_zero
     ; si es 1
     je down_left_one
-
 
 down_left_neighbour:
     ;BUSCAR ABAJO IZQUIERDA
@@ -318,7 +279,6 @@ down_left_neighbour:
     cmp eax, 24
     jg outlander
 
-
     ; buscar 1 
     mov al, [grid + eax]
     cmp al, 1
@@ -326,7 +286,6 @@ down_left_neighbour:
     jne down_left_zero
     ; si es 1
     je down_left_one
-
 
 right_zero:
     mov eax, 4      
@@ -358,7 +317,6 @@ right_one:
 
     call left_neighbour
 
-
 left_zero:
     mov eax, 4      
     mov ebx, 1     
@@ -372,8 +330,7 @@ left_zero:
     mov edx, 1
     int 0x80
 
-    call upper_neighbour
-    
+    call upper_neighbour    
 
 left_one:
     mov eax, 4      
@@ -390,7 +347,6 @@ left_one:
 
     call upper_neighbour
 
-
 up_zero:
     mov eax, 4      
     mov ebx, 1     
@@ -406,7 +362,6 @@ up_zero:
 
     call down_neighbour
     
-
 up_one:
     mov eax, 4      
     mov ebx, 1     
@@ -421,8 +376,6 @@ up_one:
     int 0x80
 
     call down_neighbour
-
-
 
 down_zero:
     mov eax, 4      
@@ -439,7 +392,6 @@ down_zero:
 
     call up_right_neighbour
     
-
 down_one:
     mov eax, 4      
     mov ebx, 1     
@@ -454,8 +406,6 @@ down_one:
     int 0x80
 
     call up_right_neighbour
-
-
 
 up_right_zero:
     mov eax, 4      
@@ -473,7 +423,6 @@ up_right_zero:
     call up_left_neighbour
     ;call ejected
 
-
 up_right_one:
     mov eax, 4      
     mov ebx, 1     
@@ -489,7 +438,6 @@ up_right_one:
 
     ;call ejected
     call up_left_neighbour
-
 
 up_left_zero:
     mov eax, 4      
@@ -507,8 +455,6 @@ up_left_zero:
     call down_right_neighbour
     ;call ejected
 
-
-
 up_left_one:
     mov eax, 4      
     mov ebx, 1     
@@ -524,8 +470,6 @@ up_left_one:
 
     call down_right_neighbour
     ;call ejected
-
-
 
 down_right_zero:
     mov eax, 4      
@@ -574,7 +518,6 @@ down_left_zero:
 
     call ejected
 
-
 down_left_one:
     mov eax, 4      
     mov ebx, 1     
@@ -589,11 +532,6 @@ down_left_one:
     int 0x80
 
     call ejected
-
-
-
-
-
 
 delimiter:
     ; si row < 0 esta afuera
@@ -614,7 +552,6 @@ delimiter:
 
     ret
 
-
 outlander:
     mov eax, 4      
     mov ebx, 1       
@@ -625,9 +562,7 @@ outlander:
     call deadspace
 
     call ejected
-
-
-
+    
 deadspace:
     mov eax, 4      
     mov ebx, 1       
