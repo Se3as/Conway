@@ -48,3 +48,11 @@ In this implementation:
 - enter "make" on the terminal
 
 - enter "make run" on the temrinal
+
+# Group 4
+
+- Juan Andres Gonzalez Garcia C33359
+
+- Adam Cortes B92415
+
+- Juan Sebastian Loaiza B74200
