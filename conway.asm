@@ -11,6 +11,10 @@ section .data
             db 1, 1, 1, 1, 1
             db 0, 1, 1, 0, 1
 
+section .bss
+    neighbour_count resb 1
+    next_grid resb 25 
+    
 section .text
     global _start
 
@@ -18,520 +22,231 @@ _start:
     call printer
     call deadspace
     call check_neighbours
+    call copy_grid
+    call printer
     call ejected
 
 printer:
     xor esi, esi
 
-print_row:
-    cmp esi, 5
-    jge printed
-    xor edi, edi
+    print_row:
+        cmp esi, 5
+        jge printed
+        xor edi, edi
 
-print_col:
+    print_col:
+        cmp edi, 5
+        jge next_r
+
+        ; indice del arr[][]
+        mov ebx, esi
+        imul ebx, 5
+        add ebx, edi
+
+        ; analizo si es 0 y salto o 1 e imprimo
+        mov al, [grid + ebx]
+        cmp al, 0
+        je print_zero
+
+        ; era 1
+        mov eax, 4      
+        mov ebx, 1      
+        mov ecx, one
+        mov edx, 1
+        int 0x80
+
+        ; Imprimir espacio
+        mov eax, 4
+        mov ebx, 1
+        mov ecx, blanc
+        mov edx, 1
+        int 0x80
+
+        jmp advance_col
+
+    print_zero:
+        mov eax, 4      
+        mov ebx, 1     
+        mov ecx, zero
+        mov edx, 1
+        int 0x80
+
+        ; Imprimir espacio
+        mov eax, 4
+        mov ebx, 1
+        mov ecx, blanc
+        mov edx, 1
+        int 0x80
+
+    advance_col:
+        inc edi
+        jmp print_col
+
+    next_r:
+        mov eax, 4      
+        mov ebx, 1       
+        mov ecx, hop
+        mov edx, 1
+        int 0x80
+
+        inc esi
+        jmp print_row
+
+    printed:
+        ret
+
+check_neighbours:
+    ; fila (y)
+    xor esi, esi 
+    ; columna (x)
+    xor edi, edi 
+
+next_cell:
+    cmp esi, 5
+    jge finish_check
     cmp edi, 5
     jge next_row
 
-    ; indice del arr[][]
-    mov ebx, esi
-    imul ebx, 5
-    add ebx, edi
+    ; resetear contador de vecinos
+    mov byte [neighbour_count], 0
 
-    ; analizo si es 0 y salto o 1 e imprimo
-    mov al, [grid + ebx]
-    cmp al, 0
-    je print_zero
+    push esi
+    push edi
+    call count_neighbours
+    pop edi
+    pop esi
 
-    ; era 1
-    mov eax, 4      
-    mov ebx, 1      
-    mov ecx, one
-    mov edx, 1
-    int 0x80
+    call apply_rules
 
-    ; Imprimir espacio
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, blanc
-    mov edx, 1
-    int 0x80
-
-    jmp advance_col
-
-print_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    ; Imprimir espacio
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, blanc
-    mov edx, 1
-    int 0x80
-
-advance_col:
     inc edi
-    jmp print_col
+    jmp next_cell
 
 next_row:
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
     inc esi
-    jmp print_row
+    xor edi, edi
+    jmp next_cell
 
-printed:
+finish_check:
     ret
 
-; OTRA COSA
-check_neighbours:
-    xor esi, esi
-    xor edi, edi
-    xor eax, eax
-    xor ebx, ebx
+count_neighbours:
+    push esi
+    push edi
 
-    mov esi, 0  ; X de el array[][]
-    mov edi, 0  ; Y de el array[][]
+    mov ecx, -1
+outer_loop:
+    cmp ecx, 2
+    jge end_count
 
-    call delimiter
+    mov edx, -1
+inner_loop:
+    cmp edx, 2
+    jge next_outer
 
-right_neighbour:
-    ; calcula el indice ne el arr[][]
+    cmp ecx, 0
+    jne check_cell
+    cmp edx, 0
+    jne check_cell
+    jmp skip_center
+
+check_cell:
+    ; calcular fila y columna del vecino
+    mov eax, esi
+    add eax, ecx
+    cmp eax, 0
+    jl skip_neighbor
+    cmp eax, 4
+    jg skip_neighbor
+
+    mov ebx, edi
+    add ebx, edx
+    cmp ebx, 0
+    jl skip_neighbor
+    cmp ebx, 4
+    jg skip_neighbor
+
+    push edi
+    mov edi, eax
+    imul eax, 5
+    add eax, ebx
+    mov bl, [grid + eax]
+    cmp bl, 1
+    jne restore_edi
+
+    ; vecino vivo, incrementar contador
+    mov al, [neighbour_count]
+    inc al
+    mov [neighbour_count], al
+
+restore_edi:
+    pop edi            
+
+skip_neighbor:
+    inc edx
+    jmp inner_loop
+
+skip_center:
+    inc edx
+    jmp inner_loop
+
+next_outer:
+    inc ecx
+    jmp outer_loop
+
+end_count:
+    pop edi
+    pop esi
+    ret
+
+apply_rules:
     mov eax, esi
     imul eax, 5
     add eax, edi
 
-    ;BUSCAR A LA DERECHA
-    ; arr[x + 1][y]
-    inc eax
+    ; estado actual (0 o 1)
+    mov bl, [grid + eax] 
+    mov cl, [neighbour_count]
 
-    cmp eax, 0
-    jl left_neighbour
+    cmp bl, 1 
+    je cell_was_alive
 
-    cmp eax, 24
-    jg left_neighbour
+cell_was_dead:
+    cmp cl, 3
+    jne rule_done
+    mov byte [next_grid + eax], 1
+    jmp rule_done
 
-    ; buscar 1
-    mov al, [grid + eax]
-    cmp al, 1
+cell_was_alive:
+    cmp cl, 2
+    je survives
+    cmp cl, 3
+    je survives
     
-    ; si es 0
-    jne right_zero
-    ; si es 1
-    je right_one
+    mov byte [next_grid + eax], 0
+    jmp rule_done
 
-left_neighbour:
-    ;BUSCAR A LA IZQUIERDA
-    ; arr[x - 1][y]
-    mov eax, esi
-    imul eax, 5
-    add eax, edi
+survives:
+    mov byte [next_grid + eax], 1
 
-    dec eax
+rule_done:
+    ret
 
-    cmp eax, 0
-    jl upper_neighbour
+copy_grid:
+    xor ecx, ecx    
 
-    cmp eax, 24
-    jg upper_neighbour
+copy_loop:
+    cmp ecx, 25
+    jge copy_done
 
-    ; buscar 1 
-    mov al, [grid + eax]
-    cmp al, 1
-    ; si es 0
-    jne left_zero
-    ; si es 1
-    je left_one
+    mov al, [next_grid + ecx]
+    mov [grid + ecx], al
 
-upper_neighbour:
-    ;BUSCAR ARRIBA
-    ; arr[x][y - 1]
-    mov eax, esi
-    imul eax, 5
-    add eax, edi
+    inc ecx
+    jmp copy_loop
 
-    sub eax, 5
+copy_done:
+    ret
 
-    cmp eax, 0
-    jl down_neighbour
-
-    cmp eax, 24
-    jg down_neighbour
-
-    ; buscar 1 
-    mov al, [grid + eax]
-    cmp al, 1
-    ; si es 0
-    jne up_zero
-    ; si es 1
-    je up_one
-
-down_neighbour:
-    ;BUSCAR ABAJO
-    ; arr[x][y + 1]
-    mov eax, esi
-    imul eax, 5
-    add eax, edi
-
-    add eax, 5
-
-    cmp eax, 0
-    jl up_right_neighbour
-
-    cmp eax, 24
-    jg up_right_neighbour
-
-    ; buscar 1 
-    mov al, [grid + eax]
-    cmp al, 1
-    ; si es 0
-    jne down_zero
-    ; si es 1
-    je down_one
-
-up_right_neighbour:
-    ;BUSCAR ARRIBA DERECHA
-    ; arr[x + 1][y - 1]
-    mov eax, esi
-    imul eax, 5
-    add eax, edi
-
-    sub eax, 4
-
-    cmp eax, 0
-    jl up_left_neighbour
-
-    cmp eax, 24
-    jg up_left_neighbour
-
-    ; buscar 1 
-    mov al, [grid + eax]
-    cmp al, 1
-    ; si es 0
-    jne up_right_zero
-    ; si es 1
-    je up_right_one
-
-up_left_neighbour:
-    ;BUSCAR ARRIBA IZQUIERDA
-    ; arr[x - 1][y - 1]
-    mov eax, esi
-    imul eax, 5
-    add eax, edi
-
-    sub eax, 6
-
-    cmp eax, 0
-    jl down_right_neighbour
-
-    cmp eax, 24
-    jg down_right_neighbour
-
-    ; buscar 1 
-    mov al, [grid + eax]
-    cmp al, 1
-    ; si es 0
-    jne up_left_zero
-    ; si es 1
-    je up_left_one
-
-down_right_neighbour:
-    ;BUSCAR ABAJO DERECHA
-    ; arr[x + 1][y + 1]
-    mov eax, esi
-    imul eax, 5
-    add eax, edi
-
-    add eax, 6
-
-    cmp eax, 0
-    jl outlander
-
-    cmp eax, 24
-    jg outlander
-
-    ; buscar 1 
-    mov al, [grid + eax]
-    cmp al, 1
-    ; si es 0
-    jne down_left_zero
-    ; si es 1
-    je down_left_one
-
-down_left_neighbour:
-    ;BUSCAR ABAJO IZQUIERDA
-    ; arr[x - 1][y + 1]
-    mov eax, esi
-    imul eax, 5
-    add eax, edi
-
-    add eax, 4
-
-    cmp eax, 0
-    jl outlander
-
-    cmp eax, 24
-    jg outlander
-
-    ; buscar 1 
-    mov al, [grid + eax]
-    cmp al, 1
-    ; si es 0
-    jne down_left_zero
-    ; si es 1
-    je down_left_one
-
-right_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call left_neighbour
-
-right_one:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, one
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call left_neighbour
-
-left_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call upper_neighbour    
-
-left_one:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, one
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call upper_neighbour
-
-up_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call down_neighbour
-    
-up_one:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, one
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call down_neighbour
-
-down_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call up_right_neighbour
-    
-down_one:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, one
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call up_right_neighbour
-
-up_right_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call up_left_neighbour
-    ;call ejected
-
-up_right_one:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, one
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    ;call ejected
-    call up_left_neighbour
-
-up_left_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call down_right_neighbour
-    ;call ejected
-
-up_left_one:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, one
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call down_right_neighbour
-    ;call ejected
-
-down_right_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call down_left_neighbour
-    ;call ejected
-
-down_right_one:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, one
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call down_left_neighbour
-    ;call ejected
-
-down_left_zero:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, zero
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call ejected
-
-down_left_one:
-    mov eax, 4      
-    mov ebx, 1     
-    mov ecx, one
-    mov edx, 1
-    int 0x80
-
-    mov eax, 4      
-    mov ebx, 1       
-    mov ecx, hop
-    mov edx, 1
-    int 0x80
-
-    call ejected
 
 delimiter:
     ; si row < 0 esta afuera
