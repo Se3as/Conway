@@ -270,11 +270,11 @@ delimiter:
 outlander:
     mov eax, 4      
     mov ebx, 1       
-    mov ecx, none
+    mov ecx, blanc
     mov edx, 1
     int 0x80
+    ret
 
-    call deadspace
 
     call ejected
     
@@ -285,9 +285,11 @@ deadspace:
     mov edx, 1
     int 0x80
 
-    ret
+    pop ebp
+
 
 ejected:
+    call printer
     mov eax, 1
     xor ebx, ebx
     int 0x80
