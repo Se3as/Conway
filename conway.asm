@@ -5,15 +5,20 @@ section .data
     zero db '0', 0
     blanc db ' ', 0
     none db '9', 0
-    grid db 1, 1 ,0, 0, 0
-            db 0, 0, 0, 1, 0
-            db 0, 1, 0, 0, 0
-            db 1, 1, 1, 1, 1
-            db 0, 1, 1, 0, 1
+    grid db 1, 1, 0, 0, 0, 0, 1, 0, 0, 0
+            db 0, 0, 0, 1, 0, 1, 0, 1, 1, 1
+            db 0, 1, 0, 0, 0, 0, 1, 1, 0, 1
+            db 1, 0, 1, 1, 1, 0, 1, 0, 1, 0
+            db 0, 1, 1, 0, 1, 0, 1, 1, 1, 0
+            db 1, 0, 1, 1, 1, 0, 1, 0, 1, 0
+            db 0, 0, 0, 1, 0, 1, 0, 0, 1, 1
+            db 0, 1, 1, 0, 1, 1, 0, 1, 0, 0
+            db 0, 0, 0, 1, 0, 1, 0, 1, 1, 1
+            db 0, 1, 1, 1, 0, 0, 1, 0, 0, 0
 
 section .bss
     neighbour_count resb 1
-    next_grid resb 25 
+    next_grid resb 100 
     
 section .text
     global _start
@@ -30,17 +35,17 @@ printer:
     xor esi, esi
 
     print_row:
-        cmp esi, 5
+        cmp esi, 10
         jge printed
         xor edi, edi
 
     print_col:
-        cmp edi, 5
+        cmp edi, 10
         jge next_r
 
         ; indice del arr[][]
         mov ebx, esi
-        imul ebx, 5
+        imul ebx, 10
         add ebx, edi
 
         ; analizo si es 0 y salto o 1 e imprimo
@@ -102,9 +107,9 @@ check_neighbours:
     xor edi, edi 
 
 next_cell:
-    cmp esi, 5
+    cmp esi, 10
     jge finish_check
-    cmp edi, 5
+    cmp edi, 10
     jge next_row
 
     ; resetear contador de vecinos
@@ -155,19 +160,19 @@ check_cell:
     add eax, ecx
     cmp eax, 0
     jl skip_neighbor
-    cmp eax, 4
+    cmp eax, 9
     jg skip_neighbor
 
     mov ebx, edi
     add ebx, edx
     cmp ebx, 0
     jl skip_neighbor
-    cmp ebx, 4
+    cmp ebx, 9
     jg skip_neighbor
 
     push edi
     mov edi, eax
-    imul eax, 5
+    imul eax, 10
     add eax, ebx
     mov bl, [grid + eax]
     cmp bl, 1
@@ -200,7 +205,7 @@ end_count:
 
 apply_rules:
     mov eax, esi
-    imul eax, 5
+    imul eax, 10
     add eax, edi
 
     ; estado actual (0 o 1)
@@ -235,7 +240,7 @@ copy_grid:
     xor ecx, ecx    
 
 copy_loop:
-    cmp ecx, 25
+    cmp ecx, 100
     jge copy_done
 
     mov al, [next_grid + ecx]
@@ -270,11 +275,11 @@ delimiter:
 outlander:
     mov eax, 4      
     mov ebx, 1       
-    mov ecx, blanc
+    mov ecx, none
     mov edx, 1
     int 0x80
-    ret
 
+    call deadspace
 
     call ejected
     
@@ -285,11 +290,9 @@ deadspace:
     mov edx, 1
     int 0x80
 
-    pop ebp
-
+    ret
 
 ejected:
-    call printer
     mov eax, 1
     xor ebx, ebx
     int 0x80
